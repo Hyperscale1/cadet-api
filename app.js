@@ -8,6 +8,9 @@ const path = require("path");
 
 const app = express();
 const upload = multer();
+const cors = require("cors");
+app.use(cors());
+
 
 // Ensure the responses folder exists
 const responsesDir = path.join(__dirname, "responses");
@@ -33,6 +36,12 @@ app.use(bodyParser.text({ type: "text/plain" }));
 
 // For XFDF (application/vnd.adobe.xfdf) submissions
 app.use(bodyParser.text({ type: "application/vnd.adobe.xfdf+xml" }));
+
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} - Content-Type: ${req.headers["content-type"]}`);
+  next();
+});
+
 
 // For PDF file submissions
 app.post("/api/submit", upload.single("file"), (req, res, next) => {
@@ -101,8 +110,28 @@ app.post("/api/submit", (req, res) => {
   res.status(415).json({ error: "Unsupported Media Type" });
 });
 
+// List all response files
+app.get("/", (req, res) => {
+  fs.readdir(responsesDir, (err, files) => {
+    if (err) {
+      return res.status(500).json({ error: "Could not read responses directory" });
+    }
+    // Only show .json files
+    const jsonFiles = files.filter((file) => file.endsWith(".json"));
+    res.json({ files: jsonFiles });
+  });
+});
+
+// 
+
+
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`API listening on port ${PORT}`);
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Server error", details: err.message });
 });
