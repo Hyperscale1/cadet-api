@@ -35,7 +35,14 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.text({ type: "text/plain" }));
 
 // For XFDF (application/vnd.adobe.xfdf) submissions
-app.use(bodyParser.text({ type: "application/vnd.adobe.xfdf+xml" }));
+app.use(
+  bodyParser.text({
+    type: (req) =>
+      req.headers["content-type"] &&
+      req.headers["content-type"].startsWith("application/vnd.adobe.xfdf"),
+  })
+);
+
 
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url} - Content-Type: ${req.headers["content-type"]}`);
@@ -60,11 +67,11 @@ app.post("/api/submit", upload.single("file"), (req, res, next) => {
 
 // For XFDF submissions
 app.post("/api/submit", async (req, res, next) => {
-  if (
-    req.is("application/vnd.adobe.xfdf+xml") ||
-    (req.headers["content-type"] &&
-      req.headers["content-type"].includes("application/vnd.adobe.xfdf+xml"))
-  ) {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.startsWith("application/vnd.adobe.xfdf")) {
+    if (!req.body) {
+      return res.status(400).json({ error: "No XFDF body received" });
+    }
     try {
       const parser = new xml2js.Parser();
       const result = await parser.parseStringPromise(req.body);
@@ -76,11 +83,12 @@ app.post("/api/submit", async (req, res, next) => {
       const savedFile = saveResponse(data);
       return res.json({ status: "XFDF received", file: savedFile });
     } catch (err) {
-      return res.status(400).json({ error: "Invalid XFDF" });
+      return res.status(400).json({ error: "Invalid XFDF", details: err.message });
     }
   }
   next();
 });
+
 
 // For FDF submissions
 app.post("/api/submit", (req, res, next) => {
