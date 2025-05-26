@@ -70,7 +70,10 @@ app.post("/api/submit", async (req, res, next) => {
   const contentType = req.headers["content-type"] || "";
   if (contentType.startsWith("application/vnd.adobe.xfdf")) {
     if (!req.body) {
-      return res.status(400).json({ error: "No XFDF body received" });
+      return res
+        .status(200)
+        .type("text/html")
+        .send("No XFDF body received");
     }
     try {
       const parser = new xml2js.Parser();
@@ -81,13 +84,21 @@ app.post("/api/submit", async (req, res, next) => {
         data: result,
       };
       const savedFile = saveResponse(data);
-      return res.json({ status: "XFDF received", file: savedFile });
+      // Respond with a simple HTML message
+      return res
+        .status(200)
+        .type("text/html")
+        .send("OK");
     } catch (err) {
-      return res.status(400).json({ error: "Invalid XFDF", details: err.message });
+      return res
+        .status(200)
+        .type("text/html")
+        .send("Invalid XFDF");
     }
   }
   next();
 });
+
 
 
 // For FDF submissions
